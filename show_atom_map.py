@@ -7,7 +7,6 @@ as reactants -> products.
 """
 
 import io
-import sys
 
 from PIL import Image
 from rdkit import Chem
@@ -21,19 +20,23 @@ SIZE = 500
 
 
 def _move_map_numbers_to_notes(mol) -> None:
-    """Show atom-map numbers as small side annotations instead of inline in the atom label."""
-    has_map_numbers = any(atom.GetAtomMapNum() != 0 for atom in mol.GetAtoms())
-    if not has_map_numbers:
-        print("Warning: no atom-map numbers found; "
-              "falling back to RDKit atom indices.", file=sys.stderr)
-        for atom in mol.GetAtoms():
-            atom.SetAtomMapNum(atom.GetIdx())
+    """Show atom-map numbers as small side annotations instead of inline in the atom label.
 
+    Atoms with no explicit atom-map number are left unlabeled.
+    """
     for atom in mol.GetAtoms():
         map_num = atom.GetAtomMapNum()
         if map_num != 0:
             atom.SetProp("atomNote", str(map_num))
             atom.SetAtomMapNum(0)
+
+
+def _configure_draw_options(drawer) -> None:
+    options = drawer.drawOptions()
+    options.annotationFontScale = 0.85
+    options.bondLineWidth = 2
+    options.minFontSize = 14
+    options.maxFontSize = 24
 
 
 def render_mapped_smiles(smiles: str, size: int = 500) -> bytes:
@@ -45,12 +48,20 @@ def render_mapped_smiles(smiles: str, size: int = 500) -> bytes:
             raise ValueError(f"Could not parse reaction SMILES: {smiles!r}")
 
         mols = list(rxn.GetReactants()) + list(rxn.GetAgents()) + list(rxn.GetProducts())
+        num_atoms = 0
         for mol in mols:
             mol.UpdatePropertyCache(strict=False)
             Chem.rdDepictor.Compute2DCoords(mol)
             _move_map_numbers_to_notes(mol)
+            num_atoms += mol.GetNumAtoms()
 
-        drawer = rdMolDraw2D.MolDraw2DCairo(size * 3, size)
+        # Scale resolution up for bigger reactions so detail (and atom-map
+        # notes) stay sharp instead of getting crammed into a fixed canvas.
+        scale = max(1.0, num_atoms / 25)
+        width, height = int(size * 3 * scale), int(size * scale)
+
+        drawer = rdMolDraw2D.MolDraw2DCairo(width, height)
+        _configure_draw_options(drawer)
         drawer.DrawReaction(rxn)
         drawer.FinishDrawing()
     else:
@@ -60,7 +71,11 @@ def render_mapped_smiles(smiles: str, size: int = 500) -> bytes:
 
         _move_map_numbers_to_notes(mol)
 
-        drawer = rdMolDraw2D.MolDraw2DCairo(size, size)
+        scale = max(1.0, mol.GetNumAtoms() / 25)
+        dimension = int(size * scale)
+
+        drawer = rdMolDraw2D.MolDraw2DCairo(dimension, dimension)
+        _configure_draw_options(drawer)
         rdMolDraw2D.PrepareAndDrawMolecule(drawer, mol)
         drawer.FinishDrawing()
 

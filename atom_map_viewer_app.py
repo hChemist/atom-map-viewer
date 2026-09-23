@@ -282,13 +282,6 @@ class AtomMapViewerApp:
             canvas.current_image = tk_image  # keep a reference alive
             canvas.create_image(0, 0, image=tk_image, anchor="nw")
 
-            popup.update_idletasks()
-            width = min(popup.winfo_reqwidth(), screen_w)
-            height = min(popup.winfo_reqheight(), screen_h)
-            x = max((screen_w - width) // 2, 0)
-            y = max((screen_h - height) // 2, 0)
-            popup.geometry(f"{width}x{height}+{x}+{y}")
-
         def zoom_in() -> None:
             redraw(zoom_state["scale"] * 1.25)
 
@@ -335,6 +328,16 @@ class AtomMapViewerApp:
         # whole structure is visible right away; the user can zoom in from there.
         if fit_scale < 1.0:
             zoom_to_fit()
+
+        # Size and center the popup once, based on the viewport, and leave it
+        # fixed from then on -- zooming in/out should change what's visible
+        # inside the window, not the window itself.
+        popup.update_idletasks()
+        width = min(popup.winfo_reqwidth(), screen_w)
+        height = min(popup.winfo_reqheight(), screen_h)
+        x = max((screen_w - width) // 2, 0)
+        y = max((screen_h - height) // 2, 0)
+        popup.geometry(f"{width}x{height}+{x}+{y}")
 
     @staticmethod
     def _parse_entries(raw_text: str) -> list[tuple[str, str]]:

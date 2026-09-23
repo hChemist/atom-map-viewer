@@ -29,6 +29,22 @@ Edit the `SMILES` constant near the top of [show_atom_map.py](show_atom_map.py) 
 python atom_map_viewer_app.py
 ```
 
-Paste one SMILES/SMIRKS/reaction-SMILES string per line into the text box,
-click **Render**, then use **Previous**/**Next** (or the Left/Right arrow
-keys) to step through the rendered structures.
+Paste SMILES/SMIRKS/reaction-SMILES strings into the text box (one per line,
+or a row copied horizontally from a spreadsheet) and click **Render**. The
+structures are drawn below and stack into a scrollable page. Click any
+structure to open it full-size, with zoom and scroll controls.
+
+## Building a standalone .exe
+
+To share the applet with someone who doesn't have Python installed, bundle it
+into a single Windows executable with [PyInstaller](https://pyinstaller.org/):
+
+```
+pip install pyinstaller
+pyinstaller --onefile --windowed --name AtomMapViewer atom_map_viewer_app.py
+```
+
+The result is `dist/AtomMapViewer.exe` — a self-contained file (~40 MB,
+since it bundles RDKit) that runs standalone. Share that one file; the
+`build/` and `dist/` folders and the generated `.spec` file are safe to
+delete/regenerate and aren't tracked in this repo.
